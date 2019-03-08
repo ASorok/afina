@@ -5,10 +5,12 @@
 #include <thread>
 
 #include <afina/network/Server.h>
+#include <afina/concurrency/Executor.h>
 
 namespace spdlog {
 class logger;
 }
+
 
 namespace Afina {
 namespace Network {
@@ -43,7 +45,7 @@ private:
     std::shared_ptr<spdlog::logger> _logger;
 
     // Atomic flag to notify threads when it is time to stop. Note that
-    // flag must be atomic in order to safely publisj changes cross thread
+    // flag must be atomic in order to safely publish changes cross thread
     // bounds
     std::atomic<bool> running;
 
@@ -52,6 +54,11 @@ private:
 
     // Thread to run network on
     std::thread _thread;
+
+    //Thread pool from hw3
+    Afina::Concurrency::Executor *_executor;
+
+    void exec(int client_socket);
 };
 
 } // namespace MTblocking
