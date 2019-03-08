@@ -27,8 +27,8 @@ class Executor {
         // Threadppol is stopped
         kStopped
     };
-
-    Executor(std::string name, int size);
+public:
+    Executor(int low_watermark, int high_watermark, int max_queue_size, std::chrono::milliseconds idle_time);
     ~Executor();
 
     /**
@@ -46,20 +46,7 @@ class Executor {
      * That function doesn't wait for function result. Function could always be written in a way to notify caller about
      * execution finished by itself
      */
-    template <typename F, typename... Types> bool Execute(F &&func, Types... args) {
-        // Prepare "task"
-        auto exec = std::bind(std::forward<F>(func), std::forward<Types>(args)...);
-
-        std::unique_lock<std::mutex> lock(this->mutex);
-        if (state != State::kRun) {
-            return false;
-        }
-
-        // Enqueue new task
-        tasks.push_back(exec);
-        empty_condition.notify_one();
-        return true;
-    }
+    template <typename F, typename... Types> bool Execute(F &&func, Types... args);
 
 private:
     // No copy/move/assign allowed
@@ -84,6 +71,11 @@ private:
     std::condition_variable empty_condition;
 
     /**
+     * Conditional variable to await stop of threadpool
+     */
+    std::condition_variable stop_condition;
+
+    /**
      * Vector of actual threads that perorm execution
      */
     std::vector<std::thread> threads;
@@ -97,7 +89,32 @@ private:
      * Flag to stop bg threads
      */
     State state;
+
+    /**
+    * Minimal amount of threads to be present
+    */
+   int _low_watermark;
+
+   /**
+    * Maximum amount of threads to be present
+    */
+   int _high_watermark;
+
+   /**
+    * Maximum amount of tasks in the queue
+    */
+   int _max_queue_size;
+
+   /**
+    * If there are more than _low_watermark
+    * threads, they wait for a new task
+    * for _idle_time milliseconds before
+    * disappearing
+    */
+   std::chrono::milliseconds _idle_time;
 };
+
+void perform(Executor *executor);
 
 } // namespace Concurrency
 } // namespace Afina
